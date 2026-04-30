@@ -5,7 +5,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Setup Node
@@ -22,12 +22,19 @@ jobs:
       - name: Install Dependencies
         run: |
           cd apps/mobile-expo
-          # This command is critical for mobile builds
+          # Ensure necessary build modules are present
           npm install --save-dev expo-modules-autolinking
+          # Install with legacy-peer-deps to ignore version conflicts on mobile
           npm install --legacy-peer-deps
 
       - name: Build APK
         run: |
           cd apps/mobile-expo
-          # The non-interactive flag requires the projectId to be in app.json
-          eas build --platform android --profile preview --non-interactive
+          # 1. Force the Project ID into the environment
+          export EAS_PROJECT_ID="11b790d5-66b3-407d-b7ac-aa03ac13a6b6"
+          
+          # 2. Run the build in non-interactive mode
+          # --profile preview: Uses the APK settings from eas.json
+          # --platform android: Targets Android
+          # --non-interactive: Prevents the build from pausing to ask questions
+          npx eas-cli build --platform android --profile preview --non-interactive
