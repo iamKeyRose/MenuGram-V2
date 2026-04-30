@@ -4,6 +4,9 @@
     "slug": "menugram",
     "version": "1.0.0",
     "owner": "mytsoul",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
     "android": {
       "package": "com.menugram.app"
     },
@@ -11,12 +14,6 @@
       "eas": {
         "projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"
       }
-    },
-    "updates": {
-      "url": "https://u.expo.dev/YOUR_PROJECT_ID_HERE"
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
     }
   }
 }
