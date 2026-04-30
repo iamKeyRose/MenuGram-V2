@@ -19,22 +19,15 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Install Dependencies
+      - name: Prepare Unified Project Root
         run: |
-          cd apps/mobile-expo
-          npm install --legacy-peer-deps
-
-      - name: Fake Project Init
-        run: |
-          cd apps/mobile-expo
-          
-          # 1. Initialize a temporary local Git (EAS loves Git)
+          # 1. Initialize Git at the VERY ROOT of the monorepo
           git init
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
 
-          # 2. Force-create a perfect app.json
-          cat <<EOF > app.json
+          # 2. Ensure app.json is perfect in the mobile folder
+          cat <<EOF > apps/mobile-expo/app.json
           {
             "expo": {
               "name": "MenuGram",
@@ -47,8 +40,8 @@ jobs:
           }
           EOF
 
-          # 3. Force-create a perfect eas.json
-          cat <<EOF > eas.json
+          # 3. Ensure eas.json is perfect in the mobile folder
+          cat <<EOF > apps/mobile-expo/eas.json
           {
             "build": {
               "preview": {
@@ -58,20 +51,24 @@ jobs:
           }
           EOF
 
-          # 4. Create the hidden settings file
-          mkdir -p .expo
-          echo '{"projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"}' > .expo/settings.json
+          # 4. Create the hidden settings file inside the mobile folder
+          mkdir -p apps/mobile-expo/.expo
+          echo '{"projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"}' > apps/mobile-expo/.expo/settings.json
           
-          # 5. Commit these locally to satisfy the "configured" check
+          # 5. Commit everything from the ROOT so EAS sees a clean Git state
           git add .
-          git commit -m "local config"
+          git commit -m "Fix: Unified Git Root for EAS"
+
+      - name: Install Dependencies
+        run: |
+          cd apps/mobile-expo
+          npm install --legacy-peer-deps
 
       - name: Build APK
         run: |
           cd apps/mobile-expo
-          
-          # EAS_NO_VCS=1 tells Expo to use our manual files instead of searching GitHub
-          export EAS_NO_VCS=1
+          # Provide the ID directly to the CLI
           export EAS_PROJECT_ID="11b790d5-66b3-407d-b7ac-aa03ac13a6b6"
           
+          # We run the build from the subfolder, but EAS now sees the Git root above it
           npx eas-cli build --platform android --profile preview --non-interactive
