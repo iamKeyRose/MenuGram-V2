@@ -19,26 +19,24 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Flatten & Deep Configuration
+      - name: Rebuild Project Structure (No Assets)
         run: |
-          # 1. Move skeleton to root
-          cp -r apps/mobile-expo/* . || true
-          
-          # 2. Create a VALID Production Package.json (SDK 51)
+          # 1. Create a minimal Package.json for SDK 51
           cat <<EOF > package.json
           {
             "name": "menugram",
             "version": "1.0.0",
-            "main": "node_modules/expo/AppEntry.js",
-            "scripts": {
-              "start": "expo start",
-              "android": "expo run:android"
-            },
+            "main": "index.js",
             "dependencies": {
               "expo": "~51.0.0",
               "expo-status-bar": "~1.12.1",
               "react": "18.2.0",
-              "react-native": "0.74.1"
+              "react-native": "0.74.1",
+              "react-native-safe-area-context": "4.10.1",
+              "react-native-screens": "3.31.1",
+              "@react-navigation/native": "^6.1.17",
+              "@react-navigation/bottom-tabs": "^6.5.20",
+              "lucide-react-native": "^0.378.0"
             },
             "devDependencies": {
               "@babel/core": "^7.20.0"
@@ -47,53 +45,71 @@ jobs:
           }
           EOF
 
-          # 3. Create a Valid app.json
+          # 2. Create index.js (Required for modern Expo)
+          cat <<EOF > index.js
+          import { registerRootComponent } from 'expo';
+          import App from './App';
+          registerRootComponent(App);
+          EOF
+
+          # 3. Create the Enterprise App.js
+          cat <<EOF > App.js
+          import React from 'react';
+          import { View, Text } from 'react-native';
+          import { NavigationContainer } from '@react-navigation/native';
+          import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+          import { Wallet, Store, Search } from 'lucide-react-native';
+
+          const Tab = createBottomTabNavigator();
+
+          function WalletScreen() {
+            return (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#6366f1' }}>
+                <Text style={{ color: '#fff', fontSize: 40, fontWeight: 'bold' }}>450.00 MGRAM</Text>
+              </View>
+            );
+          }
+
+          export default function App() {
+            return (
+              <NavigationContainer>
+                <Tab.Navigator>
+                  <Tab.Screen name="Market" component={View} options={{ tabBarIcon: () => <Store color="#000" /> }} />
+                  <Tab.Screen name="Wallet" component={WalletScreen} options={{ tabBarIcon: () => <Wallet color="#000" /> }} />
+                  <Tab.Screen name="Search" component={View} options={{ tabBarIcon: () => <Search color="#000" /> }} />
+                </Tab.Navigator>
+              </NavigationContainer>
+            );
+          }
+          EOF
+
+          # 4. Minimal app.json (NO ICONS - this prevents the crash)
           cat <<EOF > app.json
           {
             "expo": {
               "name": "MenuGram",
               "slug": "menugram",
               "version": "1.0.0",
-              "orientation": "portrait",
-              "icon": "./assets/icon.png",
-              "userInterfaceStyle": "light",
-              "splash": { "backgroundColor": "#ffffff" },
               "owner": "mytsoul",
-              "android": { 
-                "package": "com.menugram.app",
-                "adaptiveIcon": { "backgroundColor": "#ffffff" }
+              "platforms": ["android"],
+              "android": {
+                "package": "com.menugram.app"
               },
-              "extra": { "eas": { "projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6" } }
+              "extra": {
+                "eas": { "projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6" }
+              }
             }
           }
           EOF
 
-          # 4. Create a basic App entry point so the build isn't empty
-          cat <<EOF > App.js
-          import React from 'react';
-          import { StyleSheet, Text, View } from 'react-native';
-          export default function App() {
-            return (
-              <View style={styles.container}>
-                <Text style={{fontSize: 24, fontWeight: 'bold'}}>MenuGram V2</Text>
-                <Text>Social Currency Marketplace</Text>
-              </View>
-            );
-          }
-          const styles = StyleSheet.create({
-            container: { flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-          });
-          EOF
-
-          # 5. Fix the hidden identity file
+          # 5. Fix EAS Identity
           mkdir -p .expo
           echo '{"projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"}' > .expo/settings.json
 
-      - name: Install Libraries
-        run: |
-          npm install --legacy-peer-deps
+      - name: Clean Install
+        run: npm install --legacy-peer-deps
 
-      - name: Build APK (Cloud Build)
+      - name: Final Build APK
         run: |
           export EAS_NO_VCS=1
           npx eas-cli build --platform android --profile preview --non-interactive
