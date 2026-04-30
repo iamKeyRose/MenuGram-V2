@@ -24,15 +24,16 @@ jobs:
           cd apps/mobile-expo
           npm install --legacy-peer-deps
 
-      - name: Force Project Configuration
+      - name: Fake Project Init
         run: |
           cd apps/mobile-expo
           
-          # 1. Manually create the hidden Expo settings folder/file
-          mkdir -p .expo
-          echo '{"projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"}' > .expo/settings.json
-          
-          # 2. Re-write the app.json to be 100% perfect for the build
+          # 1. Initialize a temporary local Git (EAS loves Git)
+          git init
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+
+          # 2. Force-create a perfect app.json
           cat <<EOF > app.json
           {
             "expo": {
@@ -46,7 +47,7 @@ jobs:
           }
           EOF
 
-          # 3. Re-write eas.json
+          # 3. Force-create a perfect eas.json
           cat <<EOF > eas.json
           {
             "build": {
@@ -57,10 +58,20 @@ jobs:
           }
           EOF
 
-      - name: Build APK (Bypass Link Check)
+          # 4. Create the hidden settings file
+          mkdir -p .expo
+          echo '{"projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"}' > .expo/settings.json
+          
+          # 5. Commit these locally to satisfy the "configured" check
+          git add .
+          git commit -m "local config"
+
+      - name: Build APK
         run: |
           cd apps/mobile-expo
-          # EAS_NO_VCS=1 tells the computer to ignore the project check and just build
-          # EXPO_APPLE_ID and other vars are not needed for Android
+          
+          # EAS_NO_VCS=1 tells Expo to use our manual files instead of searching GitHub
+          export EAS_NO_VCS=1
           export EAS_PROJECT_ID="11b790d5-66b3-407d-b7ac-aa03ac13a6b6"
-          EAS_NO_VCS=1 npx eas-cli build --platform android --profile preview --non-interactive
+          
+          npx eas-cli build --platform android --profile preview --non-interactive
