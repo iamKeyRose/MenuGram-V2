@@ -3,6 +3,14 @@
     "name": "MenuGram",
     "slug": "menugram",
     "version": "1.0.0",
-    "android": { "package": "com.menugram.app" }
+    "owner": "YOUR_EXPO_USERNAME",
+    "android": {
+      "package": "com.menugram.app"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"
+      }
+    }
   }
 }
