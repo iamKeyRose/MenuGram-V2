@@ -24,12 +24,15 @@ jobs:
           cd apps/mobile-expo
           npm install --legacy-peer-deps
 
-      - name: Force Configuration
+      - name: Force Project Configuration
         run: |
-          # Go into the app folder
           cd apps/mobile-expo
           
-          # 1. Force-create the app.json with your specific ID
+          # 1. Manually create the hidden Expo settings folder/file
+          mkdir -p .expo
+          echo '{"projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"}' > .expo/settings.json
+          
+          # 2. Re-write the app.json to be 100% perfect for the build
           cat <<EOF > app.json
           {
             "expo": {
@@ -43,7 +46,7 @@ jobs:
           }
           EOF
 
-          # 2. Force-create the eas.json
+          # 3. Re-write eas.json
           cat <<EOF > eas.json
           {
             "build": {
@@ -54,17 +57,10 @@ jobs:
           }
           EOF
 
-          # 3. Create the hidden settings file that the error is looking for
-          mkdir -p .expo
-          echo '{"projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"}' > .expo/settings.json
-          
-          echo "✅ All configurations forced successfully."
-
-      - name: Build APK
+      - name: Build APK (Bypass Link Check)
         run: |
           cd apps/mobile-expo
-          # Force the environment variable
+          # EAS_NO_VCS=1 tells the computer to ignore the project check and just build
+          # EXPO_APPLE_ID and other vars are not needed for Android
           export EAS_PROJECT_ID="11b790d5-66b3-407d-b7ac-aa03ac13a6b6"
-          
-          # Run build using 'npx' to ensure we use the local version
-          npx eas-cli build --platform android --profile preview --non-interactive
+          EAS_NO_VCS=1 npx eas-cli build --platform android --profile preview --non-interactive
