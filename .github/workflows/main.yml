@@ -1,17 +1,28 @@
 name: Generate Project Structure
-on: [workflow_dispatch] # This adds a manual button to run it
+on: [workflow_dispatch]
+
+permissions:
+  contents: write  # This fixes the Exit Code 2 error
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v4 # Updated to fix the warning
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Run Setup Script
         run: python setup.py
-      - name: Commit Files
+
+      - name: Commit and Push Files
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .
-          git commit -m "Generated Enterprise Monorepo Structure"
+          git commit -m "Generated Enterprise Monorepo Structure" || echo "No changes to commit"
           git push
