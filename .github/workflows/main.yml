@@ -1,0 +1,17 @@
+name: Generate Project Structure
+on: [workflow_dispatch] # This adds a manual button to run it
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run Setup Script
+        run: python setup.py
+      - name: Commit Files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "Generated Enterprise Monorepo Structure"
+          git push
