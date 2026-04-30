@@ -22,9 +22,12 @@ jobs:
       - name: Install Dependencies
         run: |
           cd apps/mobile-expo
-          npm install
+          # This command is critical for mobile builds
+          npm install --save-dev expo-modules-autolinking
+          npm install --legacy-peer-deps
 
       - name: Build APK
         run: |
           cd apps/mobile-expo
+          # The non-interactive flag requires the projectId to be in app.json
           eas build --platform android --profile preview --non-interactive
