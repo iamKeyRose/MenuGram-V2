@@ -1,45 +1,48 @@
-name: Generate Project Structure
+name: Bootstrap MenuGram V2
 on: [workflow_dispatch]
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  generate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Create Structure
+      - name: Build Monorepo Folders
         run: |
-          python -c "
-          import os
-          structure = {
-              'apps/tma/package.json': '{\"name\": \"tma\", \"version\": \"1.0.0\"}',
-              'apps/web-admin/package.json': '{\"name\": \"web-admin\", \"version\": \"1.0.0\"}',
-              'apps/mobile-expo/package.json': '{\"name\": \"mobile-expo\", \"version\": \"1.0.0\"}',
-              'packages/cyclos-api/index.ts': '// Cyclos API Logic',
-              'packages/ui/index.ts': '// Shared UI Logic',
-              'packages/auth/roles.ts': 'export type Role = \"SUPER_ADMIN\" | \"OWNER\" | \"CUSTOMER\";',
-              'supabase/migrations/schema.sql': '-- SQL Schema',
-              'package.json': '{\"name\": \"menugram-monorepo\", \"private\": true, \"workspaces\": [\"apps/*\", \"packages/*\"]}',
-              'turbo.json': '{\"$schema\": \"https://turbo.build/schema.json\", \"pipeline\": {\"build\": {\"dependsOn\": [\"^build\"]}}}'
-          }
-          for path, content in structure.items():
-              os.makedirs(os.path.dirname(path), exist_ok=True) if os.path.dirname(path) else None
-              with open(path, 'w') as f: f.write(content)
-          "
+          # Create the Monorepo Structure
+          mkdir -p apps/tma/src
+          mkdir -p apps/web-admin/pages
+          mkdir -p apps/mobile-expo/src/screens
+          mkdir -p packages/cyclos-api/services
+          mkdir -p packages/ui/components
+          mkdir -p packages/auth
+          mkdir -p packages/validation
+          mkdir -p packages/legal
+          mkdir -p supabase/migrations
+          mkdir -p scripts
 
-      - name: Commit and Push
+          # Create Root Files
+          echo '{"name": "menugram-v2", "private": true, "workspaces": ["apps/*", "packages/*"]}' > package.json
+          echo '{"$schema": "https://turbo.build/schema.json", "pipeline": {"build": {"dependsOn": ["^build"]}, "dev": {"cache": false}}}' > turbo.json
+
+          # Create Mobile Expo Config (For APK)
+          echo '{"expo": {"name": "MenuGram", "slug": "menugram", "version": "1.0.0", "android": {"package": "com.menugram.app"}}}' > apps/mobile-expo/app.json
+          echo '{"name": "mobile-expo", "version": "1.0.0", "dependencies": {"expo": "~50.0.0"}}' > apps/mobile-expo/package.json
+
+          # Create Supabase Schema
+          echo "CREATE TABLE profiles (id uuid PRIMARY KEY, role text); -- MenuGram V2 Base Schema" > supabase/migrations/schema.sql
+
+          # Create a dummy screen so the build works
+          echo "import React from 'react'; export default function App() { return null; }" > apps/mobile-expo/src/App.tsx
+
+      - name: Commit and Push to GitHub
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .
-          git commit -m "Bootstrap Monorepo Structure" || echo "No changes"
+          git commit -m "Bootstrap complete Monorepo structure" || echo "No changes"
           git push
