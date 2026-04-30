@@ -7,6 +7,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -19,14 +21,14 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Prepare Unified Project Root
+      - name: Configure Project Identity
         run: |
-          # 1. Initialize Git at the VERY ROOT of the monorepo
+          # 1. Initialize Git at the Root (EAS requirement)
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
           git init
-          git config user.email "action@github.com"
-          git config user.name "GitHub Action"
-
-          # 2. Ensure app.json is perfect in the mobile folder
+          
+          # 2. Force-create the 'app.json' in the mobile folder
           cat <<EOF > apps/mobile-expo/app.json
           {
             "expo": {
@@ -35,12 +37,14 @@ jobs:
               "version": "1.0.0",
               "owner": "mytsoul",
               "android": { "package": "com.menugram.app" },
-              "extra": { "eas": { "projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6" } }
+              "extra": { 
+                "eas": { "projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6" } 
+              }
             }
           }
           EOF
 
-          # 3. Ensure eas.json is perfect in the mobile folder
+          # 3. Force-create 'eas.json' in the mobile folder
           cat <<EOF > apps/mobile-expo/eas.json
           {
             "build": {
@@ -51,24 +55,25 @@ jobs:
           }
           EOF
 
-          # 4. Create the hidden settings file inside the mobile folder
+          # 4. Create hidden linking files in both Root and App folder
+          mkdir -p .expo
+          echo '{"projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"}' > .expo/settings.json
           mkdir -p apps/mobile-expo/.expo
           echo '{"projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"}' > apps/mobile-expo/.expo/settings.json
           
-          # 5. Commit everything from the ROOT so EAS sees a clean Git state
+          # 5. Commit these locally to satisfy the CLI
           git add .
-          git commit -m "Fix: Unified Git Root for EAS"
+          git commit -m "chore: link expo project"
 
       - name: Install Dependencies
         run: |
           cd apps/mobile-expo
           npm install --legacy-peer-deps
 
-      - name: Build APK
+      - name: Build APK (Cloud Build)
         run: |
           cd apps/mobile-expo
-          # Provide the ID directly to the CLI
-          export EAS_PROJECT_ID="11b790d5-66b3-407d-b7ac-aa03ac13a6b6"
-          
-          # We run the build from the subfolder, but EAS now sees the Git root above it
+          # Setting these variables directly in the command line bypasses the 'eas init' check
+          EAS_PROJECT_ID="11b790d5-66b3-407d-b7ac-aa03ac13a6b6" \
+          EAS_NO_VCS=1 \
           npx eas-cli build --platform android --profile preview --non-interactive
