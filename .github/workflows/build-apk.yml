@@ -24,16 +24,47 @@ jobs:
           cd apps/mobile-expo
           npm install --legacy-peer-deps
 
-      - name: Force Configure EAS
+      - name: Force Configuration
         run: |
+          # Go into the app folder
           cd apps/mobile-expo
-          # This creates the secret file Expo needs to avoid the error
+          
+          # 1. Force-create the app.json with your specific ID
+          cat <<EOF > app.json
+          {
+            "expo": {
+              "name": "MenuGram",
+              "slug": "menugram",
+              "version": "1.0.0",
+              "owner": "mytsoul",
+              "android": { "package": "com.menugram.app" },
+              "extra": { "eas": { "projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6" } }
+            }
+          }
+          EOF
+
+          # 2. Force-create the eas.json
+          cat <<EOF > eas.json
+          {
+            "build": {
+              "preview": {
+                "android": { "buildType": "apk" }
+              }
+            }
+          }
+          EOF
+
+          # 3. Create the hidden settings file that the error is looking for
           mkdir -p .expo
           echo '{"projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"}' > .expo/settings.json
+          
+          echo "✅ All configurations forced successfully."
 
       - name: Build APK
         run: |
           cd apps/mobile-expo
-          # Forces the build to link to your project ID
+          # Force the environment variable
           export EAS_PROJECT_ID="11b790d5-66b3-407d-b7ac-aa03ac13a6b6"
+          
+          # Run build using 'npx' to ensure we use the local version
           npx eas-cli build --platform android --profile preview --non-interactive
