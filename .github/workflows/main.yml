@@ -2,27 +2,44 @@ name: Generate Project Structure
 on: [workflow_dispatch]
 
 permissions:
-  contents: write  # This fixes the Exit Code 2 error
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4 # Updated to fix the warning
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Run Setup Script
-        run: python setup.py
+      - name: Create Structure
+        run: |
+          python -c "
+          import os
+          structure = {
+              'apps/tma/package.json': '{\"name\": \"tma\", \"version\": \"1.0.0\"}',
+              'apps/web-admin/package.json': '{\"name\": \"web-admin\", \"version\": \"1.0.0\"}',
+              'apps/mobile-expo/package.json': '{\"name\": \"mobile-expo\", \"version\": \"1.0.0\"}',
+              'packages/cyclos-api/index.ts': '// Cyclos API Logic',
+              'packages/ui/index.ts': '// Shared UI Logic',
+              'packages/auth/roles.ts': 'export type Role = \"SUPER_ADMIN\" | \"OWNER\" | \"CUSTOMER\";',
+              'supabase/migrations/schema.sql': '-- SQL Schema',
+              'package.json': '{\"name\": \"menugram-monorepo\", \"private\": true, \"workspaces\": [\"apps/*\", \"packages/*\"]}',
+              'turbo.json': '{\"$schema\": \"https://turbo.build/schema.json\", \"pipeline\": {\"build\": {\"dependsOn\": [\"^build\"]}}}'
+          }
+          for path, content in structure.items():
+              os.makedirs(os.path.dirname(path), exist_ok=True) if os.path.dirname(path) else None
+              with open(path, 'w') as f: f.write(content)
+          "
 
-      - name: Commit and Push Files
+      - name: Commit and Push
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .
-          git commit -m "Generated Enterprise Monorepo Structure" || echo "No changes to commit"
+          git commit -m "Bootstrap Monorepo Structure" || echo "No changes"
           git push
