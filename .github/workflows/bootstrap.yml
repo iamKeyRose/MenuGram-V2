@@ -1,0 +1,65 @@
+name: Generate MenuGram Monorepo
+on: [workflow_dispatch]
+
+permissions:
+  contents: write
+
+jobs:
+  build_structure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create Monorepo Folders
+        run: |
+          mkdir -p apps/tma/src/screens
+          mkdir -p apps/web-admin/pages/owner
+          mkdir -p apps/mobile-expo/src/screens
+          mkdir -p packages/cyclos-api/services
+          mkdir -p packages/ui/components
+          mkdir -p packages/auth
+          mkdir -p packages/legal
+          mkdir -p supabase/migrations
+
+      - name: Create Enterprise Configuration Files
+        run: |
+          cat <<EOF > package.json
+          {
+            "name": "menugram-v2",
+            "private": true,
+            "workspaces": ["apps/*", "packages/*"]
+          }
+          EOF
+
+          cat <<EOF > turbo.json
+          {
+            "\$schema": "https://turbo.build/schema.json",
+            "pipeline": { "build": { "dependsOn": ["^build"] } }
+          }
+          EOF
+
+          cat <<EOF > apps/mobile-expo/app.json
+          {
+            "expo": {
+              "name": "MenuGram",
+              "slug": "menugram",
+              "version": "1.0.0",
+              "android": { "package": "com.menugram.app" }
+            }
+          }
+          EOF
+
+          cat <<EOF > supabase/migrations/schema.sql
+          -- MenuGram V2 Enterprise Schema
+          CREATE TYPE user_role AS ENUM ('SUPER_ADMIN', 'OWNER', 'MANAGER', 'STAFF', 'DELIVERY', 'CUSTOMER', 'SUPPLIER');
+          CREATE TABLE profiles (id uuid PRIMARY KEY, role user_role, cyclos_id text);
+          EOF
+
+      - name: Save Folders to GitHub
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "Enterprise Monorepo Initialized" || echo "No changes"
+          git push
