@@ -19,14 +19,17 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Rebuild Project Structure (No Assets)
+      - name: Clean Room Project Creation
         run: |
-          # 1. Create a minimal Package.json for SDK 51
+          # 1. Start with a fresh directory
+          rm -rf * 
+          
+          # 2. Create the standard Package.json (Added babel-preset-expo)
           cat <<EOF > package.json
           {
             "name": "menugram",
             "version": "1.0.0",
-            "main": "index.js",
+            "main": "node_modules/expo/AppEntry.js",
             "dependencies": {
               "expo": "~51.0.0",
               "expo-status-bar": "~1.12.1",
@@ -35,37 +38,48 @@ jobs:
               "react-native-safe-area-context": "4.10.1",
               "react-native-screens": "3.31.1",
               "@react-navigation/native": "^6.1.17",
-              "@react-navigation/bottom-tabs": "^6.5.20",
-              "lucide-react-native": "^0.378.0"
+              "@react-navigation/bottom-tabs": "^6.5.20"
             },
             "devDependencies": {
-              "@babel/core": "^7.20.0"
+              "@babel/core": "^7.20.0",
+              "babel-preset-expo": "~11.0.0"
             },
             "private": true
           }
           EOF
 
-          # 2. Create index.js (Required for modern Expo)
-          cat <<EOF > index.js
-          import { registerRootComponent } from 'expo';
-          import App from './App';
-          registerRootComponent(App);
+          # 3. Create babel.config.js (THIS FIXES THE GRADLE ERROR)
+          cat <<EOF > babel.config.js
+          module.exports = function(api) {
+            api.cache(true);
+            return {
+              presets: ['babel-preset-expo'],
+            };
+          };
           EOF
 
-          # 3. Create the Enterprise App.js
+          # 4. Create a Robust App.js (Using Emoji instead of icons to prevent crashes)
           cat <<EOF > App.js
           import React from 'react';
           import { View, Text } from 'react-native';
           import { NavigationContainer } from '@react-navigation/native';
           import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-          import { Wallet, Store, Search } from 'lucide-react-native';
 
           const Tab = createBottomTabNavigator();
 
-          function WalletScreen() {
+          function Wallet() {
             return (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#6366f1' }}>
-                <Text style={{ color: '#fff', fontSize: 40, fontWeight: 'bold' }}>450.00 MGRAM</Text>
+              <View style={{flex:1, justifyContent:'center', alignItems:'center', backgroundColor:'#6366f1'}}>
+                <Text style={{color:'#fff', fontSize:40, fontWeight:'bold'}}>450.00 MGRAM</Text>
+                <Text style={{color:'#fff'}}>Social Wallet Active</Text>
+              </View>
+            );
+          }
+
+          function Market() {
+            return (
+              <View style={{flex:1, justifyContent:'center', alignItems:'center'}}>
+                <Text style={{fontSize:24}}>🏪 MenuGram Marketplace</Text>
               </View>
             );
           }
@@ -74,16 +88,15 @@ jobs:
             return (
               <NavigationContainer>
                 <Tab.Navigator>
-                  <Tab.Screen name="Market" component={View} options={{ tabBarIcon: () => <Store color="#000" /> }} />
-                  <Tab.Screen name="Wallet" component={WalletScreen} options={{ tabBarIcon: () => <Wallet color="#000" /> }} />
-                  <Tab.Screen name="Search" component={View} options={{ tabBarIcon: () => <Search color="#000" /> }} />
+                  <Tab.Screen name="Market" component={Market} options={{ tabBarLabel: '🏪 Store' }} />
+                  <Tab.Screen name="Wallet" component={Wallet} options={{ tabBarLabel: '💰 Wallet' }} />
                 </Tab.Navigator>
               </NavigationContainer>
             );
           }
           EOF
 
-          # 4. Minimal app.json (NO ICONS - this prevents the crash)
+          # 5. Create app.json (Updated package name for mytsoul)
           cat <<EOF > app.json
           {
             "expo": {
@@ -91,9 +104,8 @@ jobs:
               "slug": "menugram",
               "version": "1.0.0",
               "owner": "mytsoul",
-              "platforms": ["android"],
               "android": {
-                "package": "com.menugram.app"
+                "package": "com.mytsoul.menugram"
               },
               "extra": {
                 "eas": { "projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6" }
@@ -102,15 +114,14 @@ jobs:
           }
           EOF
 
-          # 5. Fix EAS Identity
+          # 6. Final Identity Link
           mkdir -p .expo
           echo '{"projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"}' > .expo/settings.json
 
-      - name: Clean Install
-        run: npm install --legacy-peer-deps
+      - name: Install Dependencies
+        run: npm install
 
-      - name: Final Build APK
+      - name: Build APK (Cloud Build)
         run: |
           export EAS_NO_VCS=1
           npx eas-cli build --platform android --profile preview --non-interactive
-  
