@@ -25,19 +25,19 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Generate Official Expo Project
+      - name: Generate and Flatten Official Project
         run: |
-          # 1. Wipe everything
-          rm -rf *
+          # 1. Generate the app in a temporary folder to avoid the 'not empty' error
+          npx create-expo-app@latest tmp_app --template blank --no-install
+          
+          # 2. Move everything to the root
+          cp -rn tmp_app/* .
+          rm -rf tmp_app
 
-          # 2. Use the OFFICIAL Expo generator (No manual package.json)
-          # This ensures the Gradle files are 100% correct
-          npx create-expo-app@latest . --template blank --no-install
+          # 3. Use 'expo install' to pin the exact compatible versions for SDK 51
+          npx expo install lucide-react-native react-native-svg react-native-safe-area-context react-native-screens
 
-          # 3. Use 'expo install' to add libraries (This pins the exact correct versions)
-          npx expo install lucide-react-native react-native-svg
-
-          # 4. Overwrite the App.js with our Wallet Logic
+          # 4. Overwrite App.js with the Wallet UI
           cat <<EOF > App.js
           import React from 'react';
           import { StyleSheet, Text, View, SafeAreaView } from 'react-native';
@@ -57,16 +57,45 @@ jobs:
           }
           EOF
 
-          # 5. Inject your ID and Username into the generated app.json
-          # We use 'jq' to edit the JSON safely
-          jq '.expo.owner = "mytsoul" | .expo.android.package = "com.mytsoul.menugram" | .expo.extra.eas.projectId = "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"' app.json > temp.json && mv temp.json app.json
+          # 5. Create a perfect app.json
+          cat <<EOF > app.json
+          {
+            "expo": {
+              "name": "MenuGram",
+              "slug": "menugram",
+              "version": "1.0.0",
+              "owner": "mytsoul",
+              "orientation": "portrait",
+              "icon": "./assets/icon.png",
+              "userInterfaceStyle": "light",
+              "android": {
+                "package": "com.mytsoul.menugram",
+                "adaptiveIcon": { "backgroundColor": "#ffffff" }
+              },
+              "extra": {
+                "eas": { "projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6" }
+              }
+            }
+          }
+          EOF
 
-          # 6. Create the identity link
+          # 6. Create the eas.json
+          cat <<EOF > eas.json
+          {
+            "build": {
+              "preview": {
+                "android": { "buildType": "apk" }
+              }
+            }
+          }
+          EOF
+
+          # 7. Create the identity link
           mkdir -p .expo
           echo '{"projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"}' > .expo/settings.json
 
       - name: Install Dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build APK (Cloud Build)
         run: |
