@@ -8,6 +8,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -19,136 +25,48 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Create Production Project
+      - name: Generate Official Expo Project
         run: |
-          # 1. Clear everything
+          # 1. Wipe everything
           rm -rf *
 
-          # 2. Create a PERFECT Package.json (SDK 50 for stability)
-          cat <<EOF > package.json
-          {
-            "name": "menugram",
-            "version": "1.0.0",
-            "main": "node_modules/expo/AppEntry.js",
-            "dependencies": {
-              "expo": "~50.0.14",
-              "expo-status-bar": "~1.11.1",
-              "react": "18.2.0",
-              "react-native": "0.73.6",
-              "lucide-react-native": "0.363.0",
-              "react-native-svg": "14.1.0"
-            },
-            "devDependencies": {
-              "@babel/core": "^7.20.0",
-              "babel-preset-expo": "~10.0.1"
-            },
-            "private": true
-          }
-          EOF
+          # 2. Use the OFFICIAL Expo generator (No manual package.json)
+          # This ensures the Gradle files are 100% correct
+          npx create-expo-app@latest . --template blank --no-install
 
-          # 3. Create babel.config.js
-          cat <<EOF > babel.config.js
-          module.exports = function(api) {
-            api.cache(true);
-            return {
-              presets: ['babel-preset-expo'],
-            };
-          };
-          EOF
+          # 3. Use 'expo install' to add libraries (This pins the exact correct versions)
+          npx expo install lucide-react-native react-native-svg
 
-          # 4. Create a High-Fidelity Single-Screen App.js
+          # 4. Overwrite the App.js with our Wallet Logic
           cat <<EOF > App.js
           import React from 'react';
-          import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView } from 'react-native';
-          import { Wallet, ArrowUpRight, ArrowDownLeft, History } from 'lucide-react-native';
+          import { StyleSheet, Text, View, SafeAreaView } from 'react-native';
+          import { Wallet } from 'lucide-react-native';
 
           export default function App() {
             return (
-              <SafeAreaView style={styles.container}>
-                <View style={styles.header}>
-                  <Text style={styles.title}>MenuGram V2</Text>
-                  <Text style={styles.subtitle}>Social Currency Ledger</Text>
-                </View>
-
-                <View style={styles.card}>
-                  <Text style={styles.cardLabel}>Current Balance</Text>
-                  <Text style={styles.balance}>450.00 MGRAM</Text>
-                  <Text style={styles.fiatEq}>≈ $45.00 USD</Text>
-                </View>
-
-                <View style={styles.actions}>
-                  <TouchableOpacity style={styles.btn}>
-                    <ArrowUpRight color="#6366f1" size={24} />
-                    <Text style={styles.btnText}>Send</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.btn}>
-                    <ArrowDownLeft color="#6366f1" size={24} />
-                    <Text style={styles.btnText}>Receive</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.btn}>
-                    <History color="#6366f1" size={24} />
-                    <Text style={styles.btnText}>History</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.footer}>
-                  <Text style={styles.footerText}>Enterprise Node: Active</Text>
-                  <Text style={styles.footerText}>User: mytsoul</Text>
+              <SafeAreaView style={{flex: 1, backgroundColor: '#6366f1', justifyContent: 'center', alignItems: 'center'}}>
+                <Wallet color="#fff" size={64} />
+                <Text style={{color: '#fff', fontSize: 42, fontWeight: 'bold', marginTop: 20}}>450.00</Text>
+                <Text style={{color: '#fff', fontSize: 18, opacity: 0.8}}>MGRAM Social Credits</Text>
+                <View style={{marginTop: 40, backgroundColor: '#fff', padding: 20, borderRadius: 20}}>
+                   <Text style={{color: '#6366f1', fontWeight: 'bold'}}>MenuGram V2 Dashboard</Text>
                 </View>
               </SafeAreaView>
             );
           }
-
-          const styles = StyleSheet.create({
-            container: { flex: 1, backgroundColor: '#f8fafc', padding: 20 },
-            header: { marginTop: 40, marginBottom: 30 },
-            title: { fontSize: 28, fontWeight: '900', color: '#0f172a' },
-            subtitle: { fontSize: 16, color: '#64748b' },
-            card: { 
-              backgroundColor: '#6366f1', 
-              padding: 30, 
-              borderRadius: 30, 
-              shadowColor: '#6366f1',
-              shadowOffset: { width: 0, height: 10 },
-              shadowOpacity: 0.3,
-              shadowRadius: 20,
-              elevation: 10
-            },
-            cardLabel: { color: '#fff', opacity: 0.8, fontSize: 14, textTransform: 'uppercase' },
-            balance: { color: '#fff', fontSize: 38, fontWeight: 'bold', marginTop: 10 },
-            fiatEq: { color: '#fff', opacity: 0.7, marginTop: 5 },
-            actions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 40 },
-            btn: { backgroundColor: '#fff', padding: 20, borderRadius: 20, alignItems: 'center', width: '30%', borderWidth: 1, borderColor: '#e2e8f0' },
-            btnText: { marginTop: 8, fontSize: 12, fontWeight: 'bold', color: '#1e293b' },
-            footer: { marginTop: 'auto', marginBottom: 20, alignItems: 'center' },
-            footerText: { color: '#94a3b8', fontSize: 12 }
-          });
           EOF
 
-          # 5. Perfect app.json (NO ASSETS)
-          cat <<EOF > app.json
-          {
-            "expo": {
-              "name": "MenuGram",
-              "slug": "menugram",
-              "version": "1.0.0",
-              "owner": "mytsoul",
-              "android": {
-                "package": "com.mytsoul.menugram"
-              },
-              "extra": {
-                "eas": { "projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6" }
-              }
-            }
-          }
-          EOF
+          # 5. Inject your ID and Username into the generated app.json
+          # We use 'jq' to edit the JSON safely
+          jq '.expo.owner = "mytsoul" | .expo.android.package = "com.mytsoul.menugram" | .expo.extra.eas.projectId = "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"' app.json > temp.json && mv temp.json app.json
 
-          # 6. Final Identity Link
+          # 6. Create the identity link
           mkdir -p .expo
           echo '{"projectId": "11b790d5-66b3-407d-b7ac-aa03ac13a6b6"}' > .expo/settings.json
 
-      - name: Clean Install
-        run: npm install --legacy-peer-deps
+      - name: Install Dependencies
+        run: npm install
 
       - name: Build APK (Cloud Build)
         run: |
